@@ -1,0 +1,7 @@
+{
+  "name": "MdtJumpPlugin",
+  "author": "monthzifang",
+  "main": "com.mdt.jump.JumpComIdPlugin",
+  "description": "Generate and query 4-character com ids for player UUIDs with local storage and optional remote database support.",
+  "version": "v1"
+}
