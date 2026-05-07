@@ -14,7 +14,33 @@
 
 # mdt Jump Plugin
 
-这是一个 Mindustry 服务端插件模板，用于为每个玩家 UUID 生成唯一的四位 `com id`，并提供查询、反查、远程数据库存储与 HTTP 接口能力。
+这是一个 Mindustry 服务端插件模板，用于为每个玩家 UUID 生成唯一四位 `com id`，并提供本地存储、可选远程数据库存储、反查能力与 HTTP 接口。
+
+## 市场固定识别文件
+
+本仓库在根目录固定提供：
+
+```text
+market.plugin.json
+```
+
+插件市场客户端应统一读取这个文件识别插件信息。
+
+当前文件包含的主要字段：
+
+- `metadataVersion`
+- `name`
+- `displayName`
+- `author`
+- `description`
+- `version`
+- `requiredMarketVersion`
+- `channel`
+- `targets`
+- `downloadUrls`
+- `dependencies`
+- `repositoryUrl`
+- `entry`
 
 ## 构建
 
@@ -70,7 +96,7 @@ config/mdt-jump-plugin/plugin-config.properties
 com.mdt.jump.JumpComIdPlugin
 ```
 
-## 版本
+## 版本规则
 
-- 插件版本：`v1`
-- 建议市场版本：`v1`
+- 当前插件版本：`v1`
+- 当前需求市场版本：`v1`
