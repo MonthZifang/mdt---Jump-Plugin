@@ -60,7 +60,7 @@ dist/mdt-jump-plugin.jar
 插件首次启动时会自动创建：
 
 ```text
-config/mdt-jump-plugin/plugin-config.properties
+config/mods/config/mdt-jump-plugin/plugin-config.properties
 ```
 
 配置文件名使用英文，配置键按你的要求保留中文。

@@ -18,7 +18,7 @@ import mindustry.gen.Player;
 import mindustry.mod.Plugin;
 
 public final class JumpComIdPlugin extends Plugin {
-    private static final Path DATA_DIRECTORY = Paths.get("config", "mdt-jump-plugin");
+    private static final Path DATA_DIRECTORY = Paths.get("config", "mods", "config", "mdt-jump-plugin");
 
     private static volatile JumpComIdApi api;
 
