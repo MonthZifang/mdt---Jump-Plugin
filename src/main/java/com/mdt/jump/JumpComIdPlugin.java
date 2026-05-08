@@ -13,6 +13,7 @@ import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Optional;
+import mindustry.game.EventType.DisposeEvent;
 import mindustry.game.EventType.PlayerJoin;
 import mindustry.gen.Player;
 import mindustry.mod.Plugin;
@@ -40,6 +41,7 @@ public final class JumpComIdPlugin extends Plugin {
             if (configuration.isApiEnabled()) {
                 httpApiServer = new HttpApiServer(configuration, service);
                 httpApiServer.start();
+                Events.on(DisposeEvent.class, event -> shutdownHttpApiServer());
             }
 
             Events.on(PlayerJoin.class, event -> service.getOrCreate(resolveUuid(event.player)));
@@ -53,6 +55,13 @@ public final class JumpComIdPlugin extends Plugin {
             );
         } catch (Exception exception) {
             throw new RuntimeException("MdtJumpPlugin 初始化失败。", exception);
+        }
+    }
+
+    private void shutdownHttpApiServer() {
+        if (httpApiServer != null) {
+            httpApiServer.close();
+            httpApiServer = null;
         }
     }
 

@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
 public final class HttpApiServer implements AutoCloseable {
     private final PluginConfiguration configuration;
@@ -30,7 +31,16 @@ public final class HttpApiServer implements AutoCloseable {
 
     public void start() throws IOException {
         server = HttpServer.create(new InetSocketAddress(configuration.getApiHost(), configuration.getApiPort()), 0);
-        executorService = Executors.newCachedThreadPool();
+        executorService = Executors.newCachedThreadPool(new ThreadFactory() {
+            private int index;
+
+            @Override
+            public Thread newThread(Runnable runnable) {
+                Thread thread = new Thread(runnable, "mdt-jump-http-" + index++);
+                thread.setDaemon(true);
+                return thread;
+            }
+        });
         server.setExecutor(executorService);
         server.createContext("/api/v1/health", new HealthHandler());
         server.createContext("/api/v1/com-id", new QueryByUuidHandler());
