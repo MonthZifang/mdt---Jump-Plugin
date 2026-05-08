@@ -1,5 +1,3 @@
-[go-Mindustry](https://github.com/tomorrowsetout/go-Mindustry)
-
 <div align="center">
   <a href="https://github.com/MonthZifang/YUEYUEDAO-TECH">
     <img src="./md/logo.png" alt="月月岛科技 Logo" width="720" />
