@@ -2,14 +2,17 @@
   "metadataVersion": 1,
   "name": "mdt-jump-plugin",
   "displayName": "mdt Jump Plugin",
-  "displayNameZh": "MDT 跳转插件",
+  "displayNameZh": "MDT ????",
   "author": "monthzifang",
   "description": "Generate 4-character com ids for Mindustry player UUIDs with local storage, optional JDBC storage, and HTTP API access.",
-  "descriptionZh": "为 Mindustry 玩家 UUID 生成四位 com id，支持本地存储、可选远程数据库存储以及 HTTP 调用接口。",
-  "version": "v1",
+  "descriptionZh": "? Mindustry ?? UUID ???? com id?????????? JDBC ?????? HTTP API ???",
+  "version": "V1.2.0 - 157X - 2026x5-9",
   "requiredMarketVersion": "v1",
   "channel": "modded",
-  "targets": ["mdt", "mdtx"],
+  "targets": [
+    "mdt",
+    "mdtx"
+  ],
   "downloadUrls": [
     "https://raw.githubusercontent.com/MonthZifang/mdt---Jump-Plugin/main/dist/mdt-jump-plugin.jar",
     "https://raw.githubusercontent.com/MonthZifang/mdt---Jump-Plugin/main/plugin.json"

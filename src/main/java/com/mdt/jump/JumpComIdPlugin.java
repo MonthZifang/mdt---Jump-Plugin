@@ -10,6 +10,7 @@ import com.mdt.jump.http.HttpApiServer;
 import com.mdt.jump.service.ComIdService;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.BindException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Optional;
@@ -23,9 +24,11 @@ public final class JumpComIdPlugin extends Plugin {
 
     private static volatile JumpComIdApi api;
 
+    private Thread shutdownHook;
     private PluginConfiguration configuration;
     private ComIdService service;
     private HttpApiServer httpApiServer;
+    private boolean apiRunning;
 
     public static JumpComIdApi getApi() {
         return api;
@@ -37,56 +40,121 @@ public final class JumpComIdPlugin extends Plugin {
             configuration = PluginConfiguration.load(DATA_DIRECTORY);
             service = new ComIdService(configuration);
             api = service;
+            registerSharedServices();
+            apiRunning = false;
 
             if (configuration.isApiEnabled()) {
-                httpApiServer = new HttpApiServer(configuration, service);
-                httpApiServer.start();
-                Events.on(DisposeEvent.class, event -> shutdownHttpApiServer());
+                try {
+                    httpApiServer = new HttpApiServer(configuration, service);
+                    httpApiServer.start();
+                    apiRunning = true;
+                    registerShutdownHook();
+                    Events.on(DisposeEvent.class, event -> shutdownHttpApiServer());
+                } catch (BindException bindException) {
+                    httpApiServer = null;
+                    Log.warn("MdtJumpPlugin API port already in use. Running without HTTP API. host=@ port=@",
+                        configuration.getApiHost(), configuration.getApiPort());
+                }
             }
 
             Events.on(PlayerJoin.class, event -> service.getOrCreate(resolveUuid(event.player)));
 
             Log.info(
-                "MdtJumpPlugin 已加载。local=@ remote=@ api=@ config=@",
+                "MdtJumpPlugin loaded. local=@ remote=@ apiEnabled=@ apiRunning=@ config=@",
                 service.isLocalStorageEnabled(),
                 service.isRemoteStorageEnabled(),
                 configuration.isApiEnabled(),
+                apiRunning,
                 configuration.getConfigFile()
             );
         } catch (Exception exception) {
-            throw new RuntimeException("MdtJumpPlugin 初始化失败。", exception);
+            throw new RuntimeException("MdtJumpPlugin init failed.", exception);
         }
     }
 
     private void shutdownHttpApiServer() {
         if (httpApiServer != null) {
+            Log.info("MdtJumpPlugin shutting down HTTP API.");
             httpApiServer.close();
             httpApiServer = null;
+        }
+        apiRunning = false;
+        unregisterSharedServices();
+        if (shutdownHook != null) {
+            try {
+                Runtime.getRuntime().removeShutdownHook(shutdownHook);
+            } catch (IllegalStateException ignored) {
+                // JVM is already shutting down.
+            }
+            shutdownHook = null;
+        }
+    }
+
+    private void registerShutdownHook() {
+        if (shutdownHook != null) {
+            return;
+        }
+        shutdownHook = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                shutdownHttpApiServer();
+            }
+        }, "mdt-jump-plugin-shutdown");
+        shutdownHook.setDaemon(true);
+        Runtime.getRuntime().addShutdownHook(shutdownHook);
+    }
+
+    private void registerSharedServices() {
+        registerSharedService("mdt.jump.api", api);
+        registerSharedService("com.mdt.jump.api.JumpComIdApi", api);
+    }
+
+    private void unregisterSharedServices() {
+        unregisterSharedService("mdt.jump.api");
+        unregisterSharedService("com.mdt.jump.api.JumpComIdApi");
+    }
+
+    private void registerSharedService(String key, Object service) {
+        try {
+            Class<?> hub = Class.forName("mdt.ServeMdtPlugin");
+            hub.getMethod("registerSharedService", String.class, Object.class).invoke(null, key, service);
+        } catch (Exception ignored) {
+            // Core hub is optional.
+        }
+    }
+
+    private void unregisterSharedService(String key) {
+        try {
+            Class<?> hub = Class.forName("mdt.ServeMdtPlugin");
+            hub.getMethod("unregisterSharedService", String.class).invoke(null, key);
+        } catch (Exception ignored) {
+            // Core hub is optional.
         }
     }
 
     @Override
     public void registerServerCommands(CommandHandler handler) {
-        handler.register("jump-comid-get", "<uuid>", "根据 UUID 查询或创建 com id。", args -> {
+        handler.register("jump-comid-get", "<uuid>", "Get or create a comid from UUID.", args -> {
             ComIdRecord record = service.getOrCreate(args[0]);
             Log.info("@ -> @", record.getUuid(), record.getComId());
         });
 
-        handler.register("jump-comid-find", "<comId>", "通过 com id 反查 UUID。", args -> {
+        handler.register("jump-comid-find", "<comId>", "Find UUID by comid.", args -> {
             Optional<ComIdRecord> record = service.findByComId(args[0]);
             if (record.isPresent()) {
                 Log.info("@ -> @", record.get().getComId(), record.get().getUuid());
             } else {
-                Log.info("未找到 com id: @", args[0]);
+                Log.info("comid not found: @", args[0]);
             }
         });
 
-        handler.register("jump-comid-status", "查看插件状态。", args -> {
+        handler.register("jump-comid-status", "Show plugin status.", args -> {
             Log.info(
-                "local=@ remote=@ api=@ @:@",
+                "local=@ remote=@ apiEnabled=@ apiRunning=@ @:@",
                 service.isLocalStorageEnabled(),
                 service.isRemoteStorageEnabled(),
                 configuration.isApiEnabled(),
+                apiRunning,
                 configuration.getApiHost(),
                 configuration.getApiPort()
             );
@@ -95,7 +163,7 @@ public final class JumpComIdPlugin extends Plugin {
 
     @Override
     public void registerClientCommands(CommandHandler handler) {
-        handler.<Player>register("comid", "[uuid]", "查询自己的 com id，或按 UUID 查询。", (args, player) -> {
+        handler.<Player>register("comid", "[uuid]", "Show your comid or query another UUID.", (args, player) -> {
             ComIdRecord record = args.length == 0 ? service.getOrCreate(resolveUuid(player)) : service.getOrCreate(args[0]);
             player.sendMessage("[accent]UUID[]: " + record.getUuid() + "\n[accent]com id[]: " + record.getComId());
         });
@@ -109,7 +177,7 @@ public final class JumpComIdPlugin extends Plugin {
                 return value.toString();
             }
         } catch (ReflectiveOperationException ignored) {
-            // 继续尝试字段读取。
+            // Continue by trying field access.
         }
 
         try {
@@ -119,9 +187,9 @@ public final class JumpComIdPlugin extends Plugin {
                 return value.toString();
             }
         } catch (ReflectiveOperationException ignored) {
-            // 最后抛出明确错误。
+            // Throw a clear error below.
         }
 
-        throw new IllegalStateException("无法从 Player 对象读取 UUID。");
+        throw new IllegalStateException("Unable to resolve UUID from Player.");
     }
 }
